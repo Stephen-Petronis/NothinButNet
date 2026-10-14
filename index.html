@@ -48,7 +48,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:256/224;image-rendering
     <canvas id="cv" width="256" height="224" aria-label="Gym court"></canvas>
     <div class="overlay" id="ov">
       <h2 id="ovTitle">OFF THE BLEACHERS…</h2>
-      <p id="ovText">Call your shot. Tap the spots the ball should bounce off, then it drops for nothing but net. Your rival has to repeat the whole route and add one more. Miss and you pick up a letter. Spell HORSE and you lose the gym.</p>
+      <p id="ovText">Call your shot. Tap the spots the ball should bounce off, then it drops for nothing but net. Your rival has to repeat the whole route and add one more. No hitting the same object twice in a row. Miss and you pick up a letter. Spell HORSE and you lose the gym.</p>
       <p class="sub" id="ovSub">Sink a 10-bounce shot to clear the level outright.</p>
       <div class="btns" id="ovBtns">
         <button class="btn go" id="b1p">1 PLAYER VS CPU</button>
@@ -198,6 +198,9 @@ function beginTurn(){
 function pressPad(i, byCpu){
   if(G.phase!=="input") return;
   if(!byCpu && cur().cpu) return;
+  // house rule: the new spot can't be the same object as the one right before it
+  const k0=G.input.length;
+  if(k0===G.chain.length && k0>0 && i===G.input[k0-1]){ sfx.buzz(); say("NOT TWICE IN A ROW!","#ff4d4d",1100); return; }
   flash(i);
   const k=G.input.length; G.input.push(i);
   syncUI();
