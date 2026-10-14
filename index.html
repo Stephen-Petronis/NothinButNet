@@ -74,8 +74,7 @@ const CONFIG = {
   baseSegMs: 520,      // ball travel time per bounce at the start
   minSegMs: 210,
   segSpeedup: 28,      // ms faster per bounce in the chain
-  cpuBaseErr: 0.002,   // chance per tap the CPU slips, plus a bit more per spot in the chain
-  cpuErrPerSpot: 0.003,
+  cpuChokeAt: 3,       // once the CPU has this many letters (H-O-R) it bricks every shot it has to match
   cpuTapMs: 340,
   cpuFirst: true,      // in 1P mode the CPU takes the opening shot
 };
@@ -229,12 +228,17 @@ function miss(){
   }), 300);
 }
 function runCpu(){
-  const err=CONFIG.cpuBaseErr+CONFIG.cpuErrPerSpot*G.chain.length;
+  const ce=LEVELS[G.level].cpuErr, err=ce.base+ce.perSpot*G.chain.length;
+  const choke = cur().letters>=CONFIG.cpuChokeAt && G.chain.length>0;
+  const slipAt = choke ? rand(G.chain.length) : -1;   // where in the route it chokes
   let k=0;
   const step=()=>{
     if(G.phase!=="input") return;
     let i;
-    if(k<G.chain.length) i = Math.random()<err ? (G.chain[k]+1+rand(5))%6 : G.chain[k];
+    if(k<G.chain.length){
+      const slip = choke ? k===slipAt : Math.random()<err;
+      i = slip ? (G.chain[k]+1+rand(5))%6 : G.chain[k];
+    }
     else i = cpuPick();
     k++; pressPad(i,true);
     if(G.phase==="input") later(step, CONFIG.cpuTapMs);
@@ -447,7 +451,8 @@ function paintPlayground(g){
 }
 
 const LEVELS = [
-  { name:"THE GYM", paint:paintGym, spots:[
+  // cpuErr: chance per tap the CPU slips = base + perSpot * chain length
+  { name:"THE GYM", paint:paintGym, cpuErr:{base:0.03, perSpot:0.035}, spots:[
     {name:"BLEACHERS",  x:24,  y:124},
     {name:"RAFTERS",    x:44,  y:72},
     {name:"SCOREBOARD", x:94,  y:41},
@@ -455,7 +460,7 @@ const LEVELS = [
     {name:"BANNER",     x:212, y:70},
     {name:"DRUM",       x:232, y:126},
   ]},
-  { name:"THE PLAYGROUND", paint:paintPlayground, spots:[
+  { name:"THE PLAYGROUND", paint:paintPlayground, cpuErr:{base:0.002, perSpot:0.003}, spots:[
     {name:"SLIDE",       x:30,  y:110},
     {name:"JUNGLE GYM",  x:40,  y:65},
     {name:"SCHOOL ROOF", x:95,  y:42},
