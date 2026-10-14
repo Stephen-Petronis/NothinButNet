@@ -49,10 +49,12 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:256/224;image-rendering
     <div class="overlay" id="ov">
       <h2 id="ovTitle">OFF THE BLEACHERS…</h2>
       <p id="ovText">Call your shot. Tap the spots the ball should bounce off, then it drops for nothing but net. Your rival has to repeat the whole route and add one more. Miss and you pick up a letter. Spell HORSE and you lose the gym.</p>
-      <p class="sub" id="ovSub">Sink a 10-bounce shot to clear the gym outright.</p>
+      <p class="sub" id="ovSub">Sink a 10-bounce shot to clear the level outright.</p>
       <div class="btns" id="ovBtns">
         <button class="btn go" id="b1p">1 PLAYER VS CPU</button>
         <button class="btn go" id="b2p">2 PLAYERS</button>
+        <button class="btn go" id="bnext" hidden>NEXT LEVEL</button>
+        <button class="btn" id="blvl">LEVEL 1: THE GYM</button>
       </div>
     </div>
   </div>
@@ -180,8 +182,9 @@ function startGame(vsCpu){
   G.players[0].letters=0; G.players[1].letters=0;
   G.players[1].cpu=vsCpu;
   G.chain=[]; G.input=[]; G.turn=(vsCpu && CONFIG.cpuFirst) ? 1 : 0; G.ball=null;
-  ov.hidden=true;
-  beginTurn();
+  G.vsCpu=vsCpu; ov.hidden=true;
+  G.phase="intro"; syncUI(); say(LEVELS[G.level].name,"#ffd23f",1300);
+  later(beginTurn,1300);
 }
 function beginTurn(){
   G.phase="intro"; G.input=[]; G.replays=1;
@@ -262,11 +265,15 @@ function replay(){
 function gameOver(winIdx, why){
   G.phase="over"; syncUI(); sfx.cheer();
   const w=G.players[winIdx], l=G.players[1-winIdx];
-  document.getElementById("ovTitle").textContent=`${w.name} OWNS THE GYM!`;
+  const lvl=LEVELS[G.level], next=LEVELS[G.level+1], advance=!w.cpu && next;
+  document.getElementById("ovTitle").textContent=`${w.name} OWNS ${lvl.name}!`;
   document.getElementById("ovText").textContent = why==="horse"
     ? `${l.name} spelled ${CONFIG.word}. The longest route was too much.`
     : `${w.name} sank a ${G.chain.length}-bounce shot. Nothing but net.`;
-  document.getElementById("ovSub").textContent="Next stop: the playground. Coming soon.";
+  document.getElementById("ovSub").textContent = w.cpu ? `${w.name} holds the court. Run it back.`
+    : next ? `Level ${G.level+2} unlocked: ${next.name}.` : "More courts coming soon.";
+  const nb=document.getElementById("bnext");
+  nb.hidden=!advance; if(advance) nb.textContent=`NEXT: ${next.name}`;
   document.getElementById("b1p").textContent="REMATCH VS CPU";
   document.getElementById("b2p").textContent="REMATCH 2P";
   ov.hidden=false;
@@ -305,8 +312,7 @@ function drawSprite(id,cx,footY,s,alpha){
 
 // static gym (front view: hoop centered, objects in a semicircle), drawn once
 const bg=document.createElement("canvas"); bg.width=256; bg.height=224;
-(function paintGym(){
-  const g=bg.getContext("2d");
+function paintGym(g){
   // wall + bricks
   rr(g,0,0,256,152,"#24193a");
   for(let y=34,row=0;y<152;y+=8,row++){ rr(g,0,y,256,1,"#2d2147"); for(let x=(row%2)*8;x<256;x+=16) rr(g,x,y-7,1,7,"#2d2147"); }
@@ -363,7 +369,108 @@ const bg=document.createElement("canvas"); bg.width=256; bg.height=224;
   g.fillStyle="#f4eee0"; g.beginPath(); g.arc(232,126,10,0,7); g.fill();
   rr(g,227,125,10,2,"#c77dff");
   rr(g,222,138,2,14,"#6b6580"); rr(g,241,138,2,14,"#6b6580");
-})();
+}
+
+// LEVEL 2: the playground (front view, same semicircle layout as the gym)
+function paintPlayground(g){
+  // sky, sun, clouds
+  const sky=g.createLinearGradient(0,26,0,140); sky.addColorStop(0,"#4f9fe0"); sky.addColorStop(1,"#bfe3f5");
+  g.fillStyle=sky; g.fillRect(0,0,256,152);
+  g.fillStyle="#ffe680"; g.beginPath(); g.arc(138,36,7,0,7); g.fill();
+  [[18,34],[118,58],[228,30]].forEach(([x,y])=>{ rr(g,x,y,22,5,"#ffffff"); rr(g,x+4,y-4,12,4,"#ffffff"); rr(g,x+2,y+5,18,2,"#dbeef8"); });
+  // grass + chain-link fence
+  rr(g,0,126,256,26,"#4caf50"); rr(g,0,126,256,2,"#6cc96f");
+  g.fillStyle="rgba(170,176,186,.55)";
+  for(let x=0;x<256;x+=4) for(let k=0;k<20;k+=2){ g.fillRect(x+(k%4),130+k,1,1); }
+  for(let x=0;x<256;x+=24) rr(g,x,128,2,24,"#8a9099");
+  rr(g,0,128,256,1,"#8a9099");
+
+  // SCHOOL ROOF (yellow) — school building behind the hoop
+  rr(g,68,46,54,106,"#b5533c");
+  for(let y=50;y<150;y+=5) rr(g,68,y,54,1,"#9c4532");
+  for(let r=0;r<3;r++) for(let c=0;c<3;c++){ const x=73+c*16, y=54+r*22; rr(g,x,y,10,10,"#e8e0c8"); rr(g,x+1,y+1,8,8,"#7fb8dc"); rr(g,x+5,y+1,1,8,"#e8e0c8"); }
+  rr(g,64,36,62,5,"#8a6d1a"); rr(g,64,41,62,4,"#ffd23f");
+  rr(g,88,26,14,10,"#e8e0c8"); g.fillStyle="#1a1010"; g.beginPath(); g.arc(95,31,3,0,7); g.fill();
+
+  // TREE (green) — branch reaching over the hoop
+  rr(g,178,50,8,78,"#6b4423"); rr(g,180,50,2,78,"#835532");
+  rr(g,150,40,32,3,"#6b4423"); rr(g,160,36,3,5,"#6b4423");
+  [[160,32,11],[176,24,14],[194,30,13],[204,46,11],[150,46,8]].forEach(([x,y,r])=>{
+    g.fillStyle="#2e8b46"; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+    g.fillStyle="#5ce07a"; g.beginPath(); g.arc(x-3,y-3,r*.45,0,7); g.fill();
+  });
+
+  // JUNGLE GYM (blue) — upper left
+  [16,32,48,64].forEach(x=>rr(g,x,64,3,64,"#2f6fb0"));
+  [64,82,100].forEach(y=>rr(g,14,y,54,3,"#4da3ff"));
+  for(let x=19;x<64;x+=6) rr(g,x,64,1,3,"#bfe0ff");
+
+  // SLIDE (red) — far left
+  rr(g,4,90,2,40,"#8a9099"); rr(g,12,90,2,40,"#8a9099");
+  for(let y=96;y<128;y+=7) rr(g,4,y,10,1,"#8a9099");
+  rr(g,2,88,18,3,"#ff4d4d");
+  for(let x=18;x<=50;x++){ const y=Math.round(91+(x-18)*1.5); rr(g,x,y,1,4,"#ff4d4d"); rr(g,x,y-1,1,1,"#ffb0b0"); }
+
+  // SWINGS (orange) — upper right
+  g.fillStyle="#9a5a1c";
+  for(let k=0;k<70;k++){ g.fillRect(198-(k*.12|0),58+k,2,1); g.fillRect(230+(k*.12|0),58+k,2,1); }
+  rr(g,194,55,42,3,"#ff9a3c");
+  [205,213,219,227].forEach(x=>rr(g,x,58,1,34,"#c0c4cc"));
+  rr(g,203,92,12,2,"#ff9a3c"); rr(g,217,92,12,2,"#ff9a3c");
+
+  // TRASH CAN (purple) — far right
+  rr(g,226,118,22,28,"#8e5cc4");
+  for(let x=229;x<246;x+=4) rr(g,x,121,1,23,"#6d3fa3");
+  rr(g,224,114,26,4,"#c77dff"); rr(g,234,111,6,3,"#c77dff");
+  rr(g,222,146,30,2,"rgba(0,0,0,.25)");
+
+  // blacktop court
+  rr(g,0,152,256,72,"#3d4048");
+  for(let y=158;y<224;y+=9) for(let x=(y*7)%13;x<256;x+=17) rr(g,x,y,2,1,"#484b54");
+  rr(g,30,170,14,1,"#2c2e34"); rr(g,44,171,6,1,"#2c2e34"); rr(g,200,190,10,1,"#2c2e34");
+  rr(g,0,153,256,1,"#f4eee0");
+  g.fillStyle="rgba(255,210,63,.22)"; g.beginPath(); g.moveTo(100,154); g.lineTo(156,154); g.lineTo(176,224); g.lineTo(80,224); g.fill();
+  g.fillStyle="#f4eee0"; for(let k=0;k<=40;k++){ const a=Math.PI*k/40; g.fillRect(Math.round(128+Math.cos(a)*30),Math.round(196-Math.sin(a)*8),1,1); }
+
+  // outdoor hoop on a pole, chain net
+  rr(g,126,98,4,56,"#6b6580"); rr(g,126,98,1,56,"#8a8499");
+  rr(g,104,70,48,28,"#d9dde6"); rr(g,104,70,48,1,"#9a94a8"); rr(g,104,97,48,1,"#9a94a8");
+  rr(g,146,90,6,7,"#b07a5a"); rr(g,104,70,4,3,"#b07a5a");
+  g.strokeStyle="#d7263d"; g.lineWidth=1; g.strokeRect(118.5,83.5,20,13);
+  rr(g,114,98,28,3,"#ff6a1a");
+  g.fillStyle="#b8bcc6";
+  for(let k=0;k<14;k++){ g.fillRect(115+(k*.36|0),101+k,1,1); g.fillRect(140-(k*.36|0),101+k,1,1); }
+  for(let k=0;k<6;k++) for(let x=118+(k%2)*2+k;x<138-k;x+=3) g.fillRect(x,102+k*2,1,1);
+
+  // top bar last so nothing pokes into it
+  rr(g,0,0,256,25,"#120e1c"); rr(g,0,25,256,1,"#3a3350");
+}
+
+const LEVELS = [
+  { name:"THE GYM", paint:paintGym, spots:[
+    {name:"BLEACHERS",  x:24,  y:124},
+    {name:"RAFTERS",    x:44,  y:72},
+    {name:"SCOREBOARD", x:94,  y:41},
+    {name:"LIGHTS",     x:162, y:40},
+    {name:"BANNER",     x:212, y:70},
+    {name:"DRUM",       x:232, y:126},
+  ]},
+  { name:"THE PLAYGROUND", paint:paintPlayground, spots:[
+    {name:"SLIDE",       x:30,  y:110},
+    {name:"JUNGLE GYM",  x:40,  y:65},
+    {name:"SCHOOL ROOF", x:95,  y:42},
+    {name:"TREE",        x:162, y:41},
+    {name:"SWINGS",      x:214, y:56},
+    {name:"TRASH CAN",   x:237, y:115},
+  ]},
+];
+function setLevel(n){
+  G.level=n;
+  LEVELS[n].spots.forEach((s,i)=>{ SPOTS[i].name=s.name; SPOTS[i].x=s.x; SPOTS[i].y=s.y; padBtns[i].textContent=s.name; });
+  const g=bg.getContext("2d"); g.clearRect(0,0,256,224); LEVELS[n].paint(g);
+  document.getElementById("blvl").textContent=`LEVEL ${n+1}: ${LEVELS[n].name}`;
+}
+setLevel(0);
 
 function drawTopBar(){
   G.players.forEach((p,i)=>{
@@ -400,8 +507,9 @@ function draw(now){
   ctx.drawImage(bg,0,0);
   drawTopBar();
   // scoreboard LEDs
-  txt("SHOT",94,33,"#ff3b30","center");
-  txt(String(G.chain.length).padStart(2,"0"),94,42,"#ff3b30","center");
+  const nn=String(G.chain.length).padStart(2,"0");
+  if(G.level===0){ txt("SHOT",94,33,"#ff3b30","center"); txt(nn,94,42,"#ff3b30","center"); }
+  else txt("SHOT "+nn,128,4,"#ffd23f","center");
   // spot halos
   SPOTS.forEach((s,i)=>{
     const on = G.lit[i]>now;
@@ -444,6 +552,8 @@ requestAnimationFrame(loop);
 // ---------- input ----------
 document.getElementById("b1p").addEventListener("click",()=>startGame(true));
 document.getElementById("b2p").addEventListener("click",()=>startGame(false));
+document.getElementById("bnext").addEventListener("click",()=>{ setLevel(G.level+1); startGame(G.vsCpu); });
+document.getElementById("blvl").addEventListener("click",()=>{ if(G.phase==="title"||G.phase==="over") setLevel((G.level+1)%LEVELS.length); });
 replayBtn.addEventListener("click",()=>{ audio(); replay(); });
 muteBtn.addEventListener("click",()=>{ muted=!muted; muteBtn.textContent = muted ? "SOUND OFF" : "SOUND ON"; });
 cv.addEventListener("pointerdown",e=>{
