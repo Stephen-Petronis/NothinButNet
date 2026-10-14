@@ -27,7 +27,7 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:256/224;image-rendering
 .overlay .sub{color:var(--dim)}
 .overlay .btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
 .pads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.pad{--c:#888;font-family:var(--pixel);font-size:clamp(7px,2.3vw,10px);line-height:1.6;color:#120d18;background:var(--c);border:0;border-bottom:6px solid rgba(0,0,0,.45);min-height:60px;padding:8px 4px;cursor:pointer;filter:saturate(.7) brightness(.78);transition:filter .08s}
+.pad{--c:#888;font-family:var(--pixel);font-size:clamp(7px,2.3vw,10px);line-height:1.6;color:#120d18;background:var(--c);border:0;border-bottom:6px solid rgba(0,0,0,.45);min-height:44px;padding:8px 4px;cursor:default;display:flex;align-items:center;justify-content:center;text-align:center;-webkit-user-select:none;user-select:none;filter:saturate(.7) brightness(.78);transition:filter .08s}
 .pad .k{display:block;opacity:.55}
 .pad.lit{filter:none;box-shadow:0 0 18px var(--c);transform:translateY(3px);border-bottom-width:3px}
 .pad:disabled{opacity:.4;cursor:default}
@@ -152,11 +152,11 @@ const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
 const padsEl=document.getElementById("pads"), statusEl=document.getElementById("status");
 const replayBtn=document.getElementById("replay"), muteBtn=document.getElementById("mute");
 const ov=document.getElementById("ov");
+// pads under the screen are display-only: they light up to name each spot, you tap the gym to play
 const padBtns = SPOTS.map((s,i)=>{
-  const b=document.createElement("button");
-  b.className="pad"; b.id="pad"+i; b.style.setProperty("--c",s.c);
-  b.innerHTML=`<span class="k">${i+1}</span>${s.name}`;
-  b.addEventListener("click",()=>{ audio(); pressPad(i,false); });
+  const b=document.createElement("div");
+  b.className="pad"; b.style.setProperty("--c",s.c);
+  b.textContent=s.name;
   padsEl.appendChild(b); return b;
 });
 
@@ -170,7 +170,6 @@ function say(text,color="#f4eee0",ms=1400){ G.caption={text,color,until:performa
 function setStatus(t){ statusEl.textContent=t; }
 function syncUI(){
   const human = G.phase==="input" && !cur().cpu;
-  padBtns.forEach(b=>b.disabled=!human);
   replayBtn.disabled = !(human && G.input.length===0 && G.replays>0 && G.chain.length>0);
 }
 
@@ -450,13 +449,12 @@ muteBtn.addEventListener("click",()=>{ muted=!muted; muteBtn.textContent = muted
 cv.addEventListener("pointerdown",e=>{
   const r=cv.getBoundingClientRect();
   const x=(e.clientX-r.left)*256/r.width, y=(e.clientY-r.top)*224/r.height;
-  let best=-1, bd=16;
+  let best=-1, bd=24;
   SPOTS.forEach((s,i)=>{ const d=Math.hypot(s.x-x,s.y-y); if(d<bd){bd=d;best=i;} });
   if(best>=0){ audio(); pressPad(best,false); }
 });
 window.addEventListener("keydown",e=>{
-  if(e.key>="1"&&e.key<="6"){ audio(); pressPad(+e.key-1,false); }
-  else if(e.key==="r"||e.key==="R") replay();
+  if(e.key==="r"||e.key==="R") replay();
 });
 syncUI();
 </script>
